@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=77.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "thermal-symmetry-guard"
+version = "1.0.0"
+description = "Differential thermography that finds thermal faults without ever knowing emissivity"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{ name = "Sreeraj Santhosh" }]
+keywords = ["thermography", "predictive-maintenance", "condition-monitoring", "esp32", "mlx90614", "emissivity"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Manufacturing",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+    "Typing :: Typed",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "pytest-cov>=4.0", "ruff>=0.4", "mypy>=1.8"]
+
+[project.urls]
+Homepage = "https://github.com/SREERAJSANTHOSH/predictive_thermal_guard"
+Repository = "https://github.com/SREERAJSANTHOSH/predictive_thermal_guard"
+Issues = "https://github.com/SREERAJSANTHOSH/predictive_thermal_guard/issues"
+
+[project.scripts]
+thermal-symmetry-demo = "thermal_symmetry_guard.demo:main"
+
+# Explicit layout. Auto-discovery would trip over docs/, hardware/ and
+# firmware/ sitting beside the package.
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+thermal_symmetry_guard = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+files = ["src"]
