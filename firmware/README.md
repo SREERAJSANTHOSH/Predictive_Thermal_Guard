@@ -1,33 +1,28 @@
-# Firmware
+# ESP32 firmware
 
-`src/symmetry.c` is a line-by-line port of the Python reference in
-`src/thermal_symmetry_guard/`. Keep them in sync: if you change a threshold in
-one, change it in the other, and add a test in `tests/`.
-
-Deliberate properties of the embedded core:
-
-- **No heap.** Every buffer is sized at compile time (`TSG_MAX_POINTS`,
-  `TSG_WINDOW`, `TSG_TAU_SEGMENT`). Total footprint is roughly
-  `TSG_MAX_POINTS * (2 * TSG_WINDOW + TSG_TAU_SEGMENT * 2) * 4` bytes ≈ 8 KB
-  for 8 points.
-- **No fourth powers.** The only transcendental call is `logf()` on a
-  temperature rise. Nothing in the signal path can overflow: a Stefan-Boltzmann
-  style `T⁴` in scaled integers reaches ~10²⁰ and silently wraps a 64-bit
-  accumulator, which is exactly the class of bug this design avoids by never
-  needing an absolute radiometric model.
-- **No calibration state to persist.** The learned offsets live in RAM and are
-  re-acquired during commissioning after a reboot. Persist them to NVS only if
-  you want to skip the warm-up; nothing else depends on them.
-
-## Build
-
-```bash
-cd firmware
-pio run              # build
-pio run -t upload    # flash
-pio device monitor   # 115200 baud
-```
+The firmware reads up to eight same-address MLX90614 sensors through a
+TCA9548A I²C multiplexer and publishes a validated telemetry envelope over MQTT
+and/or HTTP.
 
 ## Wiring
 
-See [../hardware/WIRING.md](../hardware/WIRING.md).
+| ESP32 | TCA9548A / sensors |
+|---|---|
+| 3V3 | VIN |
+| GND | GND |
+| GPIO 21 | SDA |
+| GPIO 22 | SCL |
+
+Attach each MLX90614 to a separate TCA9548A channel. The default build uses
+channels 0–2 as phases L1–L3.
+
+## Build and upload
+
+```bash
+pio run -d firmware
+pio run -d firmware -t upload
+pio device monitor -b 115200
+```
+
+Edit `include/config.h` for development or override every `PTG_*` value using
+PlatformIO build flags in a private environment.

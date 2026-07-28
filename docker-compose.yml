@@ -1,0 +1,35 @@
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./ops/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+
+  api:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - mosquitto
+    ports:
+      - "8000:8000"
+    volumes:
+      - thermal-data:/app/data
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: ops/dashboard.Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+
+volumes:
+  thermal-data:
