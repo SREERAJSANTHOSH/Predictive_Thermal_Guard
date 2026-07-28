@@ -10,7 +10,7 @@ import math
 from collections import deque
 from collections.abc import Iterable, Sequence
 
-__all__ = ["median", "mad", "RobustBaseline", "Cusum", "TrendFilter"]
+__all__ = ["Cusum", "RobustBaseline", "TrendFilter", "mad", "median"]
 
 _MAD_TO_SIGMA = 1.4826
 """Scale factor making MAD a consistent estimator of sigma for Gaussian noise."""
@@ -159,7 +159,10 @@ class TrendFilter:
         dt = max(1e-6, t_s - self._last_t)
         prev = self.level
         self.level = self.alpha * value + (1.0 - self.alpha) * (prev + self.slope * dt)
-        self.slope = self.beta * ((self.level - prev) / dt) + (1.0 - self.beta) * self.slope
+        self.slope = (
+            self.beta * ((self.level - prev) / dt)
+            + (1.0 - self.beta) * self.slope
+        )
         self._last_t = t_s
 
     @property

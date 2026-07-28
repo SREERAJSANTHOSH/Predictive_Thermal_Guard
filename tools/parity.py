@@ -224,19 +224,26 @@ def compare(
             c_verdict = C_VERDICTS[c.verdict]
 
             if c_verdict != p.verdict.value:
-                out.append(Divergence(cycle, pid, "verdict", c_verdict, p.verdict.value))
+                out.append(
+                    Divergence(cycle, pid, "verdict", c_verdict, p.verdict.value)
+                )
 
             if math.isfinite(p.asymmetry) and abs(c.asymmetry - p.asymmetry) > TOL_ASYM:
-                out.append(Divergence(cycle, pid, "asymmetry", c.asymmetry, p.asymmetry))
+                out.append(
+                    Divergence(cycle, pid, "asymmetry", c.asymmetry, p.asymmetry)
+                )
 
             if math.isfinite(p.robust_z) and abs(c.z - p.robust_z) > TOL_Z:
                 out.append(Divergence(cycle, pid, "z", c.z, p.robust_z))
 
-            if p.tau_ratio is not None and c.tau_ratio > 0.0:
-                if abs(c.tau_ratio - p.tau_ratio) > TOL_TAU_RATIO:
-                    out.append(
-                        Divergence(cycle, pid, "tau_ratio", c.tau_ratio, p.tau_ratio)
-                    )
+            if (
+                p.tau_ratio is not None
+                and c.tau_ratio > 0.0
+                and abs(c.tau_ratio - p.tau_ratio) > TOL_TAU_RATIO
+            ):
+                out.append(
+                    Divergence(cycle, pid, "tau_ratio", c.tau_ratio, p.tau_ratio)
+                )
     return out
 
 

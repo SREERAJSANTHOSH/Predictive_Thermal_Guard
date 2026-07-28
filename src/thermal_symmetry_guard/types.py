@@ -6,11 +6,11 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 __all__ = [
-    "Verdict",
-    "GroupMode",
-    "Reading",
     "ChannelReport",
+    "GroupMode",
     "GroupReport",
+    "Reading",
+    "Verdict",
 ]
 
 
@@ -53,7 +53,10 @@ class ChannelReport:
     verdict: Verdict
     temp_c: float
     rise_k: float
-    """Apparent rise above ambient, in kelvin. Emissivity-scaled, never trusted absolutely."""
+    """Apparent rise above ambient, in kelvin.
+
+    Emissivity-scaled and never trusted absolutely.
+    """
     asymmetry: float
     """Log-domain differential mode. 0.0 == perfectly in step with peers."""
     robust_z: float
@@ -63,7 +66,10 @@ class ChannelReport:
     tau_s: float | None = None
     """Cooldown thermal time constant, seconds. None until a cooldown is observed."""
     tau_ratio: float | None = None
-    """tau_s / baseline tau. <1 means the point now sheds heat faster than it used to."""
+    """tau_s / baseline tau.
+
+    Values below 1 mean the point now sheds heat faster than it used to.
+    """
     detail: str = ""
 
 
@@ -72,7 +78,10 @@ class GroupReport:
     group_id: str
     mode: GroupMode
     common_mode: float
-    """Shared log-domain drive level: load and ambient, with per-point offsets removed."""
+    """Shared log-domain drive level.
+
+    Contains load and ambient with per-point offsets removed.
+    """
     common_mode_rising: bool
     channels: list[ChannelReport] = field(default_factory=list)
 
