@@ -1,7 +1,7 @@
 # Thermal Symmetry Guard
 
 ![CI](https://github.com/SREERAJSANTHOSH/Predictive_Thermal_Guard/actions/workflows/ci.yml/badge.svg)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **A differential thermography engine that finds thermal faults — loose lugs, degraded thermal paths — without ever knowing or needing surface emissivity.**
 
@@ -142,4 +142,4 @@ The `test_parity.py` suite and `tools/parity.py` driver build the C code as a sh
 
 ## 📄 License
 
-[Apache 2.0](LICENSE) — Sreeraj Santhosh
+[MIT](LICENSE) — Sreeraj Santhosh

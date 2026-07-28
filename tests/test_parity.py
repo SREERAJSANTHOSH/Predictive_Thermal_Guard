@@ -8,7 +8,6 @@ misbehaved, so parity is enforced here rather than left to a manual script.
 import shutil
 
 import pytest
-
 from tools.parity import SCENARIOS, build_library, compare
 
 

@@ -43,8 +43,9 @@ def main() -> None:
         print(f"  {p.point_id}: {p.gain:.2f}")
 
     rig.settle(20.0)
-    report = None
-    for readings in rig.run(120, 20.0):
+    commissioning = rig.run(120, 20.0)
+    report = group.update(next(commissioning))
+    for readings in commissioning:
         report = group.update(readings)
     show("1. Commissioned, steady load — three very different surfaces", report)
 
@@ -58,6 +59,7 @@ def main() -> None:
     show("3. L1 develops a loose lug (+7 K on that phase only)", report)
 
     worst = report.worst
+    assert worst is not None
     print(f"\nVerdict: {worst.point_id} -> {worst.verdict.value}")
     print("No emissivity was configured, and no contact probe was ever attached.")
 

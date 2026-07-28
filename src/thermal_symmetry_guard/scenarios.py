@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 
 from .types import Reading
 
-__all__ = ["Point", "Rig", "three_phase_panel", "drive_row"]
+__all__ = ["Point", "Rig", "drive_row", "three_phase_panel"]
 
 
 @dataclass
@@ -96,7 +96,11 @@ def drive_row(n: int = 6, seed: int = 2) -> Rig:
     rng = random.Random(seed)
     return Rig(
         points=[
-            Point(f"VFD{i + 1}", gain=rng.uniform(0.6, 0.95), tau_s=rng.uniform(200, 300))
+            Point(
+                f"VFD{i + 1}",
+                gain=rng.uniform(0.6, 0.95),
+                tau_s=rng.uniform(200, 300),
+            )
             for i in range(n)
         ],
         seed=seed,

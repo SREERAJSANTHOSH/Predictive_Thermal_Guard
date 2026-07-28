@@ -36,7 +36,7 @@ import math
 from .robust import Cusum, RobustBaseline, TrendFilter, median
 from .types import ChannelReport, GroupMode, GroupReport, Reading, Verdict
 
-__all__ = ["Channel", "SymmetryGroup", "MIN_RISE_K"]
+__all__ = ["MIN_RISE_K", "Channel", "SymmetryGroup"]
 
 MIN_RISE_K = 1.5
 """Below this apparent rise above ambient the log transform is noise-dominated.
@@ -253,14 +253,18 @@ class SymmetryGroup:
             for pid, v in log_rise.items()
             if v is not None and not self.channels[pid].quarantined
         ]
-        usable = [log_rise[pid] - self.channels[pid].offset for pid in active]
+        usable: list[float] = []
+        for pid in active:
+            value = log_rise[pid]
+            if value is not None:
+                usable.append(value - self.channels[pid].offset)
 
         if len(active) >= _MIN_PEERS_FOR_MEDIAN:
             mode = GroupMode.PEER_MEDIAN
-            common = median([u for u in usable if u is not None])
+            common = median(usable)
         else:
             mode = GroupMode.SELF_HISTORY
-            common = median([u for u in usable if u is not None]) if usable else 0.0
+            common = median(usable) if usable else 0.0
 
         t_now = max((r.t_s for r in readings), default=0.0)
         self.common_mode_trend.feed(common, t_now)
