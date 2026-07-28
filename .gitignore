@@ -1,0 +1,9 @@
+.pio/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+temperature_log.csv
+firmware/include/secrets.h
+
