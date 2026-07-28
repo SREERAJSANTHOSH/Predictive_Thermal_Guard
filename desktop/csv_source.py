@@ -67,4 +67,3 @@ def latest_per_sensor(
     for reading in readings:
         latest[reading.sensor_key] = reading
     return latest
-

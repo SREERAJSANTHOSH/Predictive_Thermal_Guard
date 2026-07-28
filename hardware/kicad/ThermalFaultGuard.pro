@@ -13,4 +13,3 @@
   "schematic": {},
   "text_variables": {}
 }
-

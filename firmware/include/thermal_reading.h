@@ -10,4 +10,3 @@ struct ThermalReading {
   uint32_t sequence;
   bool valid;
 };
-

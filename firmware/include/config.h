@@ -12,4 +12,3 @@ constexpr char kDeviceId[] = "panel-a";
 constexpr char kPublishTopic[] = "thermal-fault-guard/panel-a/temperature";
 
 }  // namespace config
-

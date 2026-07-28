@@ -38,4 +38,3 @@ it in the current KiCad format if prompted.
 
 Record the measured rail voltage, detected channels, cable lengths, and any
 read errors in the repository's `NOTES.md`.
-

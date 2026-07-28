@@ -32,4 +32,3 @@ flowchart LR
     M --> S2["CH2 · MLX90614<br/>0x5A"]
     M --> S3["CH3 · MLX90614<br/>0x5A"]
 ```
-

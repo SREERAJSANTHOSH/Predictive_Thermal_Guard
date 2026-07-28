@@ -15,4 +15,3 @@
 Part numbers are intentionally not locked to one breakout vendor. Before
 assembly, compare the chosen module schematics for regulator, level shifter,
 and pull-up differences.
-

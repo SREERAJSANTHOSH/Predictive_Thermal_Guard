@@ -12,4 +12,3 @@ files:
 Do not substitute a rendered or generated breadboard image for the physical
 prototype. In the main README, replace the photo placeholder after adding
 `breadboard-overview.jpg`.
-
