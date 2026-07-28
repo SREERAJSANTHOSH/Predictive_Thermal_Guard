@@ -9,6 +9,7 @@ from pathlib import Path
 
 from .models import (
     Alert,
+    AlertCause,
     DeviceSummary,
     FrameSummary,
     SensorReading,
@@ -71,6 +72,7 @@ class Repository:
                     temperature_c REAL NOT NULL,
                     threshold_c REAL NOT NULL,
                     z_score REAL NOT NULL,
+                    cause TEXT NOT NULL DEFAULT 'absolute_warning',
                     message TEXT NOT NULL,
                     created_at TEXT NOT NULL,
                     acknowledged INTEGER NOT NULL DEFAULT 0
@@ -89,6 +91,15 @@ class Repository:
                 );
                 """
             )
+            alert_columns = {
+                row["name"]
+                for row in connection.execute("PRAGMA table_info(alerts)").fetchall()
+            }
+            if "cause" not in alert_columns:
+                connection.execute(
+                    "ALTER TABLE alerts ADD COLUMN cause TEXT "
+                    "NOT NULL DEFAULT 'absolute_warning'"
+                )
 
     def upsert_device(
         self,
@@ -141,8 +152,8 @@ class Repository:
                 """
                 INSERT OR REPLACE INTO alerts(
                     id, device_id, sensor_id, severity, temperature_c, threshold_c,
-                    z_score, message, created_at, acknowledged
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    z_score, cause, message, created_at, acknowledged
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     alert.id,
@@ -152,6 +163,7 @@ class Repository:
                     alert.temperature_c,
                     alert.threshold_c,
                     alert.z_score,
+                    alert.cause.value,
                     alert.message,
                     alert.created_at.isoformat(),
                     int(alert.acknowledged),
@@ -241,6 +253,7 @@ class Repository:
                 temperature_c=row["temperature_c"],
                 threshold_c=row["threshold_c"],
                 z_score=row["z_score"],
+                cause=AlertCause(row["cause"]),
                 message=row["message"],
                 created_at=datetime.fromisoformat(row["created_at"]),
                 acknowledged=bool(row["acknowledged"]),

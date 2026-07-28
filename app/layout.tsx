@@ -15,10 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Predictive Thermal Guard",
   description:
-    "Live thermal condition monitoring for ESP32 sensors and thermal cameras.",
-  other: {
-    "codex-preview": "development",
-  },
+    "ECE research prototype for ESP32-based thermal anomaly monitoring.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

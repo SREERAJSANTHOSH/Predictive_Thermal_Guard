@@ -21,6 +21,12 @@ class Severity(StrEnum):
     CRITICAL = "critical"
 
 
+class AlertCause(StrEnum):
+    ABSOLUTE_WARNING = "absolute_warning"
+    ABSOLUTE_CRITICAL = "absolute_critical"
+    ADAPTIVE = "adaptive"
+
+
 class SensorReading(BaseModel):
     device_id: str = Field(min_length=1, max_length=80)
     sensor_id: str = Field(min_length=1, max_length=80)
@@ -72,6 +78,7 @@ class Alert(BaseModel):
     temperature_c: float
     threshold_c: float
     z_score: float
+    cause: AlertCause
     message: str
     created_at: datetime
     acknowledged: bool = False
@@ -99,7 +106,7 @@ class DashboardSnapshot(BaseModel):
     device_count: int
     online_count: int
     warning_count: int
-    uptime_percent: float
+    uptime_percent: float | None
     latest_readings: list[SensorReading]
     alerts: list[Alert]
     frame: FrameSummary | None = None

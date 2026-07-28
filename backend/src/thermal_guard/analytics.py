@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from uuid import uuid4
 
 from .config import Settings
-from .models import Alert, FrameSummary, SensorReading, Severity, utc_now
+from .models import Alert, AlertCause, FrameSummary, SensorReading, Severity, utc_now
 
 
 @dataclass
@@ -14,13 +14,19 @@ class Baseline:
     variance: float = 1.0
     samples: int = 1
 
-    def update(self, value: float, alpha: float) -> float:
+    @property
+    def standard_deviation(self) -> float:
+        return max(0.5, math.sqrt(self.variance))
+
+    def score(self, value: float) -> float:
+        return (value - self.mean) / self.standard_deviation
+
+    def update(self, value: float, alpha: float) -> None:
         previous_mean = self.mean
         self.mean = alpha * value + (1 - alpha) * self.mean
         residual = value - previous_mean
         self.variance = alpha * residual * residual + (1 - alpha) * self.variance
         self.samples += 1
-        return residual / max(0.5, math.sqrt(self.variance))
 
 
 class ThermalAnalyzer:
@@ -36,27 +42,40 @@ class ThermalAnalyzer:
         if baseline is None:
             self._baselines[key] = Baseline(mean=reading.temperature_c)
             z_score = 0.0
+            adaptive_threshold = reading.temperature_c
+            baseline_samples = 1
         else:
-            z_score = baseline.update(reading.temperature_c, self.settings.baseline_alpha)
+            z_score = baseline.score(reading.temperature_c)
+            adaptive_threshold = (
+                baseline.mean
+                + self.settings.anomaly_z_warning * baseline.standard_deviation
+            )
+            baseline_samples = baseline.samples
+            baseline.update(reading.temperature_c, self.settings.baseline_alpha)
 
         critical = reading.temperature_c >= self.settings.absolute_critical_c
-        warning = (
-            reading.temperature_c >= self.settings.absolute_warning_c
-            or (
-                baseline is not None
-                and baseline.samples >= 8
-                and z_score >= self.settings.anomaly_z_warning
-            )
+        absolute_warning = reading.temperature_c >= self.settings.absolute_warning_c
+        adaptive_warning = (
+            baseline is not None
+            and baseline_samples >= 8
+            and z_score >= self.settings.anomaly_z_warning
         )
+        warning = absolute_warning or adaptive_warning
         if not (critical or warning):
             return None
 
         severity = Severity.CRITICAL if critical else Severity.WARNING
-        threshold = (
-            self.settings.absolute_critical_c
-            if critical
-            else self.settings.absolute_warning_c
-        )
+        if critical:
+            cause = AlertCause.ABSOLUTE_CRITICAL
+            threshold = self.settings.absolute_critical_c
+        elif absolute_warning:
+            cause = AlertCause.ABSOLUTE_WARNING
+            threshold = self.settings.absolute_warning_c
+        else:
+            cause = AlertCause.ADAPTIVE
+            threshold = adaptive_threshold
+
+        cause_label = cause.value.replace("_", " ")
         return Alert(
             id=str(uuid4()),
             device_id=reading.device_id,
@@ -65,7 +84,8 @@ class ThermalAnalyzer:
             temperature_c=reading.temperature_c,
             threshold_c=threshold,
             z_score=round(z_score, 3),
-            message=f"{reading.sensor_id} thermal {severity.value}",
+            cause=cause,
+            message=f"{reading.sensor_id} {cause_label}",
             created_at=utc_now(),
         )
 

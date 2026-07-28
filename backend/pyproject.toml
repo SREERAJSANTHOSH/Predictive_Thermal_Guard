@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "predictive-thermal-guard-api"
-version = "2.0.0"
-description = "Telemetry ingestion and predictive thermal analytics API"
+version = "0.2.0"
+description = "Telemetry ingestion and adaptive thermal anomaly-monitoring API"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"

@@ -1,8 +1,11 @@
 # Predictive Thermal Guard API
 
 FastAPI service for HTTP and MQTT telemetry ingestion, SQLite persistence,
-thermal-frame hotspot extraction, adaptive anomaly detection, alerts, and live
-WebSocket updates.
+thermal-frame hotspot extraction, adaptive anomaly detection, cause-labelled
+alerts, and live WebSocket updates.
+
+This service detects anomalies. It does not currently forecast future
+temperatures.
 
 Run from this directory:
 

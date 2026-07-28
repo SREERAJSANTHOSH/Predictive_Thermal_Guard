@@ -2,7 +2,11 @@
 
 The firmware reads up to eight same-address MLX90614 sensors through a
 TCA9548A I²C multiplexer and publishes a validated telemetry envelope over MQTT
-and/or HTTP.
+and/or HTTP. Version 0.2 configures three channels.
+
+PubSubClient publishes at MQTT QoS 0. If MQTT and HTTP are both enabled, the
+firmware attempts both every cycle. It does not yet queue readings or use HTTP
+only after an MQTT failure.
 
 ## Wiring
 

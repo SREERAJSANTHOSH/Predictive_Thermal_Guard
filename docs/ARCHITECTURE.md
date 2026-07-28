@@ -10,8 +10,9 @@ TCA9548A. Up to eight sensors can share the same I²C address because only one
 multiplexer channel is active at a time. Each batch includes object
 temperature, sensor ambient temperature, RSSI, uptime, and firmware version.
 
-MQTT is the primary transport for low-overhead continuous telemetry. HTTP uses
-the same JSON envelope and acts as a direct or fallback transport.
+MQTT and HTTP use the same JSON envelope. The current firmware attempts every
+enabled transport on each cycle. Conditional fallback, retry buffering, and
+deduplication are planned but are not implemented in version 0.2.
 
 ## Service layer
 
@@ -29,11 +30,17 @@ It combines:
 Every accepted update is available through REST and broadcast to dashboard
 clients over WebSockets.
 
+An alert records its cause (`absolute_warning`, `absolute_critical`, or
+`adaptive`) so a statistical deviation is not displayed as if it crossed the
+fixed warning temperature.
+
 ## Dashboard layer
 
 The dashboard renders thermal frames as data—not as a static image—so each cell
 remains inspectable. It attempts the configured API and WebSocket endpoints,
-then falls back to deterministic demonstration data for offline presentations.
+then switches to clearly labelled deterministic demonstration data. The
+demonstration temperature profile is an interface fixture, not experimental
+evidence.
 
 ## Security boundary
 

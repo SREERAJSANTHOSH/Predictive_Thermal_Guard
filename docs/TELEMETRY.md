@@ -8,7 +8,12 @@ Topic:
 thermal-guard/{device_id}/telemetry
 ```
 
-Recommended settings: QoS 1, 60-second keep-alive, retained flag disabled.
+The current ESP32 firmware publishes with PubSubClient at QoS 0 and does not
+retain messages. The backend subscribes at QoS 1, but that does not upgrade the
+delivery guarantee of a QoS 0 publication.
+
+For a reliability experiment, add a boot identifier and monotonic sequence
+number before collecting packet-delivery results.
 
 ## Device envelope
 

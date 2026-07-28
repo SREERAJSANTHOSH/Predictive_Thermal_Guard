@@ -1,48 +1,71 @@
 # Predictive Thermal Guard
 
+Predictive Thermal Guard is my ECE project for studying continuous,
+non-contact temperature monitoring in a small electrical-panel test rig. The
+current prototype measures three points with MLX90614 infrared sensors,
+collects the readings on an ESP32, and records them through a Python API.
+
+The name describes the longer-term aim. Version 0.2 detects thermal anomalies;
+it does not yet forecast future temperature or remaining useful life.
+
 ![CI](https://github.com/SREERAJSANTHOSH/Predictive_Thermal_Guard/actions/workflows/ci.yml/badge.svg)
-[![License: MIT](https://img.shields.io/badge/License-MIT-2dd4d7.svg)](LICENSE)
-[![ESP32](https://img.shields.io/badge/Device-ESP32-ff7a45.svg)](firmware)
-[![FastAPI](https://img.shields.io/badge/API-FastAPI-009688.svg)](backend)
+[![License: MIT](https://img.shields.io/badge/License-MIT-2f855a.svg)](LICENSE)
 
-An end-to-end ECE/IoT system for detecting thermal faults in electrical
-equipment. ESP32 devices collect non-contact temperature measurements,
-telemetry enters through MQTT or HTTP, the API persists and analyzes readings,
-and the dashboard displays live thermal maps, trends, device health, and
-prioritized alerts.
+## Research question
 
-## System
+Can a low-cost, fixed infrared sensor node combine equipment-specific limits
+and a per-sensor adaptive baseline to detect abnormal heating earlier than an
+absolute temperature limit alone?
+
+The repository contains the instrument and the experiment needed to answer
+that question. It does not contain a completed calibrated hardware dataset
+yet, so the dashboard's demonstration values are not research results.
+
+## Prototype
 
 ```mermaid
-flowchart LR
-    S["MLX90614 sensors"] --> M["TCA9548A mux"]
-    M --> E["ESP32 firmware"]
-    C["Thermal cameras"] --> A["FastAPI service"]
-    G["Generic sensor streams"] --> A
-    E -->|MQTT or HTTP| A
-    A --> D["SQLite / PostgreSQL-ready storage"]
-    A -->|REST + WebSocket| W["Live dashboard"]
+flowchart TD
+    A["Three test points"] --> B["MLX90614 sensors"]
+    B --> C["TCA9548A I²C switch"]
+    C --> D["ESP32"]
+    D --> E["MQTT QoS 0 or HTTP"]
+    F["Generic readings / thermal frames"] --> E
+    E --> G["FastAPI + SQLite"]
+    G --> H["Adaptive detector"]
+    H --> I["Next.js dashboard"]
 ```
 
-## What is included
+- The TCA9548A separates three identical-address sensors onto channels 0–2.
+- Firmware samples object and ambient temperature once per second.
+- MQTT and HTTP use one validated JSON envelope.
+- The backend stores readings, device state, alerts, and thermal frames.
+- Alerts record whether they came from an absolute limit or the adaptive
+  detector.
+- The dashboard distinguishes live telemetry from simulated interface data.
 
-- **Device firmware:** ESP32 + MLX90614 + TCA9548A, Wi-Fi reconnection,
-  multiplexed sampling, MQTT QoS 1, and HTTP fallback.
-- **Generic ingestion:** validated point-temperature payloads from any sensor
-  or gateway.
-- **Thermal cameras:** rectangular frame ingestion, hotspot localization, and
-  frame visualization.
-- **Analytics:** adaptive per-sensor baseline, z-score change detection, fixed
-  safety thresholds, and warning/critical alerts.
-- **API:** FastAPI, OpenAPI, SQLite persistence, device/readings/alerts routes,
-  and WebSocket broadcasts.
-- **Dashboard:** responsive industrial control-room UI with live/demo modes,
-  accessible heat-map inspection, alert details, temperature trends, and
-  protocol/device status.
-- **Operations:** Docker Compose, Mosquitto, environment configuration,
-  telemetry simulator, and CI for all three layers.
+The present PubSubClient firmware publishes MQTT at QoS 0. When both transports
+are enabled, it attempts both; HTTP is not yet a buffered failover path.
 
-## Quick start
+## Detector
+
+For each `(device_id, sensor_id)`, the API maintains an exponentially weighted
+mean and variance. After eight warm-up observations, a positive deviation can
+raise an adaptive warning. Independent absolute warning and critical limits
+are also applied.
+
+Default values are development settings:
+
+| Parameter | Default |
+|---|---:|
+| Baseline weight, α | 0.05 |
+| Adaptive warning score | 3.5 |
+| Absolute warning | 70 °C |
+| Absolute critical | 85 °C |
+
+These limits are not universal safety limits. They must be justified for the
+specific equipment, load, ambient condition, and inspection procedure.
+
+## Build the prototype
 
 ### Complete local stack
 
@@ -51,20 +74,18 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Open:
-
 - Dashboard: `http://localhost:3000`
-- API docs: `http://localhost:8000/docs`
+- API documentation: `http://localhost:8000/docs`
 - API health: `http://localhost:8000/health`
 - MQTT broker: `localhost:1883`
 
-Send realistic demo telemetry:
+Publish labelled simulated telemetry:
 
 ```bash
 python tools/publish_demo.py --api http://localhost:8000
 ```
 
-### Develop individual layers
+### Individual layers
 
 ```bash
 # API
@@ -82,41 +103,59 @@ pio run -d firmware
 pio run -d firmware -t upload
 ```
 
-## API examples
+## Reproduce the research
 
-Point reading:
+Start with [the experimental method](docs/RESEARCH_METHOD.md). Store raw,
+unchanged CSV files under `research/data/raw/`, note every run in
+`research/EXPERIMENT_LOG.md`, and use the analysis script:
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/readings \
-  -H 'content-type: application/json' \
-  -d '{"device_id":"panel-a","sensor_id":"L2","temperature_c":78.4}'
+python research/analyze_calibration.py research/data/raw/calibration.csv
 ```
 
-Thermal frame:
+The script reports count, bias, MAE, RMSE, standard deviation, and maximum
+absolute error from paired `reference_c` and `sensor_c` columns.
 
-```json
-{
-  "device_id": "camera-a",
-  "camera_id": "mlx90640",
-  "width": 2,
-  "height": 2,
-  "pixels_c": [31.2, 32.0, 78.4, 34.1]
-}
-```
+## Current evidence
 
-See [architecture](docs/ARCHITECTURE.md) and
-[telemetry protocol](docs/TELEMETRY.md) for integration details.
+The software CI verifies the following:
 
-## Repository layout
+- Ruff lint and strict Mypy checks for the backend;
+- backend API and detector tests with coverage reporting;
+- dashboard lint, type checking, unit tests, and production build; and
+- a PlatformIO firmware build for `esp32dev`.
+
+Software checks do not establish infrared measurement accuracy or fault
+detection performance. Those results remain pending until the controlled
+experiment is completed. See [results](docs/RESULTS.md).
+
+## Repository map
 
 ```text
-app/          Dashboard application
-backend/      FastAPI ingestion and analytics service
-firmware/     ESP32 PlatformIO project
-docs/         Architecture and protocol references
-tools/        Local telemetry simulator
-.github/      Full-stack CI
+app/          Next.js research dashboard
+backend/      FastAPI ingestion, storage, and detector
+firmware/     ESP32 + MLX90614 + TCA9548A firmware
+docs/         Architecture, protocol, method, decisions, and results
+research/     Experiment log, raw-data convention, and analysis script
+tools/        Labelled telemetry simulator
 ```
+
+## Project limits
+
+- Point sensors only observe the surfaces inside their fields of view.
+- Emissivity, reflections, target size, angle, and package heating affect
+  infrared readings.
+- The adaptive state is currently lost when the API restarts.
+- Uptime is not reported until heartbeat history is implemented.
+- The prototype has no production authentication or transport encryption.
+- An alert identifies unusual heating, not its electrical root cause.
+
+## References
+
+- [Melexis MLX90614 datasheet](https://www.melexis.com/-/media/files/documents/datasheets/mlx90614-datasheet-melexis.pdf)
+- [Texas Instruments TCA9548A datasheet](https://www.ti.com/lit/ds/symlink/tca9548a.pdf)
+- [NIST EWMA control-chart notes](https://www.itl.nist.gov/div898/handbook/pmc/section3/pmc324.htm)
+- [ISO 18434-2 thermography overview](https://www.iso.org/standard/67617.html)
 
 ## License
 

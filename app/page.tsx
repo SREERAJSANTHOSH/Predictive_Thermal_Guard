@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { createDemoFrame, thermalColor } from "../lib/thermal.mjs";
+
 type Reading = {
   sensor_id: string;
   temperature_c: number;
@@ -13,6 +15,8 @@ type Alert = {
   severity: "warning" | "critical";
   temperature_c: number;
   threshold_c: number;
+  z_score: number;
+  cause: "absolute_warning" | "absolute_critical" | "adaptive";
   message: string;
   created_at: string;
 };
@@ -21,7 +25,7 @@ type Snapshot = {
   device_count: number;
   online_count: number;
   warning_count: number;
-  uptime_percent: number;
+  uptime_percent: number | null;
   latest_readings: Reading[];
   alerts: Alert[];
   frame?: {
@@ -41,13 +45,13 @@ const trend = {
   L3: [41, 42, 42, 41, 43, 44, 46, 45, 48, 49, 47.8],
 };
 
-const demoFrame = createThermalFrame(24, 16);
+const demoFrame = createDemoFrame(24, 16);
 
 const fallbackSnapshot: Snapshot = {
   device_count: 12,
   online_count: 12,
   warning_count: 2,
-  uptime_percent: 99.4,
+  uptime_percent: null,
   latest_readings: [
     { sensor_id: "L1", temperature_c: 45.6 },
     { sensor_id: "L2", temperature_c: 78.4 },
@@ -60,6 +64,8 @@ const fallbackSnapshot: Snapshot = {
       severity: "warning",
       temperature_c: 78.4,
       threshold_c: 70,
+      z_score: 0,
+      cause: "absolute_warning",
       message: "Phase L2 hotspot",
       created_at: "2026-07-28T10:18:02Z",
     },
@@ -67,88 +73,17 @@ const fallbackSnapshot: Snapshot = {
   frame: { width: 24, height: 16, pixels_c: demoFrame },
 };
 
-function createThermalFrame(width: number, height: number): number[] {
-  return Array.from({ length: width * height }, (_, index) => {
-    const x = index % width;
-    const y = Math.floor(index / width);
-    const base = 28 + y * 0.65 + Math.sin(x * 0.72) * 2.8;
-    const phase1 = 14 * Math.exp(-((x - 6) ** 2 + (y - 8) ** 2) / 18);
-    const phase2 = 46 * Math.exp(-((x - 12) ** 2 + (y - 7) ** 2) / 13);
-    const phase3 = 18 * Math.exp(-((x - 18) ** 2 + (y - 9) ** 2) / 20);
-    return Number((base + phase1 + phase2 + phase3).toFixed(1));
-  });
-}
-
-function thermalColor(value: number): string {
-  const stops = [
-    [20, [8, 32, 88]],
-    [35, [0, 135, 180]],
-    [50, [55, 190, 118]],
-    [65, [247, 205, 45]],
-    [80, [255, 91, 35]],
-    [100, [255, 246, 218]],
-  ] as const;
-  for (let index = 1; index < stops.length; index += 1) {
-    const [upperValue, upperColor] = stops[index];
-    const [lowerValue, lowerColor] = stops[index - 1];
-    if (value <= upperValue) {
-      const ratio = Math.max(
-        0,
-        Math.min(1, (value - lowerValue) / (upperValue - lowerValue)),
-      );
-      const rgb = lowerColor.map((channel, colorIndex) =>
-        Math.round(
-          channel + (upperColor[colorIndex] - channel) * ratio,
-        ),
-      );
-      return `rgb(${rgb.join(",")})`;
-    }
-  }
-  return "rgb(255,246,218)";
-}
-
-function Sparkline({
-  values,
-  color,
-}: {
-  values: number[];
-  color: string;
-}) {
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const points = values
-    .map((value, index) => {
-      const x = (index / (values.length - 1)) * 100;
-      const y = 30 - ((value - min) / Math.max(1, max - min)) * 24;
-      return `${x},${y}`;
-    })
-    .join(" ");
-  return (
-    <svg
-      className="sparkline"
-      viewBox="0 0 100 32"
-      role="img"
-      aria-label="Recent metric trend"
-    >
-      <polyline points={points} fill="none" stroke={color} strokeWidth="2" />
-    </svg>
-  );
-}
-
 function MetricCard({
   label,
   value,
   detail,
   kind,
-  series,
 }: {
   label: string;
   value: string;
   detail: string;
   kind: "device" | "warning" | "uptime";
-  series: number[];
 }) {
-  const color = kind === "warning" ? "#f6a63b" : "#2dd4d7";
   return (
     <article className={`metric-card metric-${kind}`}>
       <div className="metric-symbol" aria-hidden="true">
@@ -159,7 +94,6 @@ function MetricCard({
         <span>{label}</span>
       </div>
       <div className="metric-trend">
-        <Sparkline values={series} color={color} />
         <small>{detail}</small>
       </div>
     </article>
@@ -322,7 +256,9 @@ export default function Home() {
     };
   }, []);
 
-  const primaryAlert = snapshot.alerts[0] ?? fallbackSnapshot.alerts[0];
+  const primaryAlert =
+    snapshot.alerts[0] ??
+    (mode === "demo" ? fallbackSnapshot.alerts[0] : null);
   const frame = snapshot.frame ?? fallbackSnapshot.frame;
   const onlineLabel = useMemo(
     () =>
@@ -357,28 +293,29 @@ export default function Home() {
             value={String(snapshot.device_count)}
             detail={onlineLabel}
             kind="device"
-            series={[7, 8, 8, 9, 10, 10, 11, 12]}
           />
           <MetricCard
             label="WARNINGS"
             value={String(snapshot.warning_count)}
             detail="Last 24h"
             kind="warning"
-            series={[1, 0, 1, 1, 0, 1, 2, 2]}
           />
           <MetricCard
             label="UPTIME"
-            value={`${snapshot.uptime_percent.toFixed(1)}%`}
-            detail="Last 30d"
+            value={
+              snapshot.uptime_percent === null
+                ? "N/A"
+                : `${snapshot.uptime_percent.toFixed(1)}%`
+            }
+            detail="Requires heartbeat history"
             kind="uptime"
-            series={[98, 99, 99, 98.7, 99.2, 99.4, 99.3, 99.4]}
           />
         </section>
 
         <section className="panel thermal-panel">
           <div className="panel-heading">
-            <h1>LIVE THERMAL MAP</h1>
-            <span>EM-PANEL-1 · updated {clock}</span>
+            <h1>{mode === "live" ? "LATEST THERMAL MAP" : "SIMULATED THERMAL MAP"}</h1>
+            <span>{mode === "live" ? "Latest accepted frame" : "Interface test data"} · {clock}</span>
           </div>
           {frame && <HeatMap frame={frame} />}
         </section>
@@ -386,66 +323,83 @@ export default function Home() {
         <aside className="side-stack">
           <section className="panel alert-panel">
             <div className="eyebrow">PRIORITIZED ALERT</div>
-            <div className="alert-title">
-              <span className="warning-icon">!</span>
-              <div>
-                <h2>{primaryAlert.message.toUpperCase()}</h2>
-                <strong>{primaryAlert.temperature_c.toFixed(1)}°C</strong>
+            {primaryAlert ? (
+              <>
+                <div className="alert-title">
+                  <span className="warning-icon">!</span>
+                  <div>
+                    <h2>{primaryAlert.message.toUpperCase()}</h2>
+                    <strong>{primaryAlert.temperature_c.toFixed(1)}°C</strong>
+                  </div>
+                  <span className="warning-badge">
+                    {primaryAlert.severity.toUpperCase()}
+                  </span>
+                </div>
+                <dl className="alert-facts">
+                  <div>
+                    <dt>Sensor</dt>
+                    <dd>{primaryAlert.sensor_id}</dd>
+                  </div>
+                  <div>
+                    <dt>Threshold</dt>
+                    <dd>&gt; {primaryAlert.threshold_c.toFixed(1)}°C</dd>
+                  </div>
+                  <div>
+                    <dt>Delta above limit</dt>
+                    <dd>
+                      +
+                      {(
+                        primaryAlert.temperature_c - primaryAlert.threshold_c
+                      ).toFixed(1)}
+                      °C
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Alert basis</dt>
+                    <dd>{primaryAlert.cause.replaceAll("_", " ")}</dd>
+                  </div>
+                </dl>
+                <p className="recommendation">
+                  Recommendation: verify the reading and inspect under the
+                  approved electrical safety procedure.
+                </p>
+              </>
+            ) : (
+              <div className="alert-title">
+                <div>
+                  <h2>NO ACTIVE ALERTS</h2>
+                  <p className="recommendation">
+                    The connected API has not returned a warning or critical
+                    event.
+                  </p>
+                </div>
               </div>
-              <span className="warning-badge">
-                {primaryAlert.severity.toUpperCase()}
-              </span>
-            </div>
-            <dl className="alert-facts">
-              <div>
-                <dt>Sensor</dt>
-                <dd>{primaryAlert.sensor_id}</dd>
-              </div>
-              <div>
-                <dt>Threshold</dt>
-                <dd>&gt; {primaryAlert.threshold_c.toFixed(1)}°C</dd>
-              </div>
-              <div>
-                <dt>Delta above limit</dt>
-                <dd>
-                  +
-                  {(
-                    primaryAlert.temperature_c - primaryAlert.threshold_c
-                  ).toFixed(1)}
-                  °C
-                </dd>
-              </div>
-              <div>
-                <dt>Predicted 30m trend</dt>
-                <dd className="rising">Rising ↑</dd>
-              </div>
-            </dl>
-            <p className="recommendation">
-              Recommendation: isolate load and schedule inspection.
-            </p>
+            )}
           </section>
 
           <section className="panel connectivity">
             <div className="panel-heading">
-              <h2>DEVICE CONNECTIVITY</h2>
+              <h2>TELEMETRY STATUS</h2>
             </div>
-            <div className="protocol-mark">MQTT</div>
+            <div className="protocol-mark">{mode === "live" ? "LIVE" : "DEMO"}</div>
             <dl>
               <div>
                 <dt>Status</dt>
-                <dd className="connected">CONNECTED</dd>
+                <dd className="connected">
+                  {mode === "live" ? "API CONNECTED" : "SIMULATED DATA"}
+                </dd>
               </div>
               <div>
-                <dt>Broker</dt>
-                <dd>mqtt://broker:1883</dd>
+                <dt>MQTT broker</dt>
+                <dd>Configured by backend</dd>
               </div>
               <div>
                 <dt>HTTP API</dt>
-                <dd>READY</dd>
+                <dd>{mode === "live" ? "RECEIVING" : "NOT CONNECTED"}</dd>
               </div>
               <div>
-                <dt>QoS / Keep alive</dt>
-                <dd>1 / 60s</dd>
+                <dt>Device publish mode</dt>
+                <dd>MQTT QoS 0 + optional HTTP</dd>
               </div>
             </dl>
           </section>
@@ -453,15 +407,26 @@ export default function Home() {
 
         <section className="panel trend-panel">
           <div className="panel-heading">
-            <h2>TEMPERATURE TREND</h2>
-            <div className="range-tabs" aria-label="Chart time range">
-              <button className="active">1H</button>
-              <button>6H</button>
-              <button>24H</button>
-              <button>7D</button>
-            </div>
+            <h2>
+              {mode === "live"
+                ? "HISTORICAL TREND"
+                : "SIMULATED TEMPERATURE PROFILE"}
+            </h2>
           </div>
-          <TrendChart latest={snapshot.latest_readings} />
+          {mode === "demo" ? (
+            <>
+              <TrendChart latest={snapshot.latest_readings} />
+              <p className="recommendation">
+                This chart is a fixed interface test profile. Experimental
+                results must come from exported device measurements.
+              </p>
+            </>
+          ) : (
+            <p className="recommendation">
+              Live point readings are connected. A historical-series endpoint
+              is not implemented in version 0.2, so no trend is inferred.
+            </p>
+          )}
         </section>
 
         <section className="panel details-panel">

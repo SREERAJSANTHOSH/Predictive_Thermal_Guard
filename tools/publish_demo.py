@@ -52,7 +52,7 @@ def main() -> None:
             "/api/v1/telemetry",
             {
                 "device_id": "EM-PANEL-1",
-                "firmware_version": "simulator-2.0",
+                "firmware_version": "simulator-0.2",
                 "uptime_s": cycle,
                 "rssi_dbm": -52,
                 "readings": readings,

@@ -36,6 +36,7 @@ def test_creates_alert_above_absolute_threshold(client: TestClient) -> None:
     payload = response.json()
     assert payload["severity"] == "warning"
     assert payload["sensor_id"] == "L2"
+    assert payload["cause"] == "absolute_warning"
 
 
 def test_rejects_malformed_frame(client: TestClient) -> None:
@@ -96,3 +97,16 @@ def test_ingests_device_envelope(client: TestClient) -> None:
     assert response.json() == []
     devices = client.get("/api/v1/devices").json()
     assert devices[0]["firmware_version"] == "2.0.0"
+
+
+def test_dashboard_does_not_invent_uptime(client: TestClient) -> None:
+    client.post(
+        "/api/v1/readings",
+        json={
+            "device_id": "panel-a",
+            "sensor_id": "L1",
+            "temperature_c": 42.5,
+        },
+    )
+
+    assert client.get("/api/v1/dashboard").json()["uptime_percent"] is None

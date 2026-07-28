@@ -21,11 +21,13 @@ jobs:
       - name: Install
         run: pip install -e 'backend[dev]'
       - name: Lint
-        run: ruff check backend
+        run: ruff check backend research
       - name: Type check
         run: cd backend && mypy
       - name: Test
-        run: pytest backend --cov=thermal_guard --cov-report=term-missing
+        run: |
+          pytest backend --cov=thermal_guard --cov-report=term-missing
+          pytest research
 
   dashboard:
     runs-on: ubuntu-latest
@@ -37,7 +39,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint
+      - run: npm run typecheck
       - run: npm test
+      - run: npm run build
 
   firmware:
     runs-on: ubuntu-latest

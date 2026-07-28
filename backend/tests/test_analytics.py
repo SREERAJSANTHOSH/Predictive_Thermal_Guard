@@ -35,6 +35,8 @@ def test_adaptive_detector_catches_statistical_jump() -> None:
     )
     assert alert is not None
     assert alert.z_score >= 2.5
+    assert alert.cause == "adaptive"
+    assert alert.threshold_c < alert.temperature_c
 
 
 def test_frame_model_rejects_invalid_pixel_count() -> None:

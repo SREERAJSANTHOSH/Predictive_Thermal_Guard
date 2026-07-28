@@ -76,7 +76,10 @@ class ThermalGuardService:
             device_count=len(devices),
             online_count=sum(device.online for device in devices),
             warning_count=sum(not alert.acknowledged for alert in alerts),
-            uptime_percent=100.0 if devices else 0.0,
+            # A single latest-seen timestamp is insufficient to calculate
+            # availability. Keep the value unknown until heartbeat history is
+            # stored and evaluated over a defined observation window.
+            uptime_percent=None,
             latest_readings=self.repository.latest_readings(),
             alerts=alerts,
             frame=self.repository.latest_frame(),
