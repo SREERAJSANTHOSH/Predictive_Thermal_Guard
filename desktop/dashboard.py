@@ -8,7 +8,7 @@ from pathlib import Path
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 from desktop.csv_source import LoggedReading, latest_per_sensor, load_readings
 
@@ -31,7 +31,7 @@ class ThermalDashboard(QtWidgets.QMainWindow):
         heading.setStyleSheet("font-size: 20px; font-weight: 600;")
         layout.addWidget(heading)
 
-        self.table = QtWidgets.QTableWidget(0, 7)
+        self.table = QtWidgets.QTableWidget(0, 8)
         self.table.setHorizontalHeaderLabels(
             [
                 "Device",
@@ -40,6 +40,7 @@ class ThermalDashboard(QtWidgets.QMainWindow):
                 "Ambient",
                 "Baseline",
                 "Deviation",
+                "Status",
                 "Updated (UTC)",
             ]
         )
@@ -96,14 +97,16 @@ class ThermalDashboard(QtWidgets.QMainWindow):
                 format_temperature(reading.ambient_c),
                 format_temperature(reading.baseline_c),
                 deviation,
+                "FAULT" if reading.abnormal else "NORMAL",
                 reading.timestamp.astimezone(timezone.utc).strftime("%H:%M:%S"),
             ]
             for column_index, value in enumerate(values):
-                self.table.setItem(
-                    row_index,
-                    column_index,
-                    QtWidgets.QTableWidgetItem(value),
-                )
+                item = QtWidgets.QTableWidgetItem(value)
+                item.setToolTip(reading.reason)
+                if reading.abnormal:
+                    item.setBackground(QtGui.QColor("#b71c1c"))
+                    item.setForeground(QtGui.QColor("#ffffff"))
+                self.table.setItem(row_index, column_index, item)
 
     def _update_plot(self, readings: list[LoggedReading]) -> None:
         history: dict[tuple[str, int], list[LoggedReading]] = defaultdict(list)
@@ -119,6 +122,18 @@ class ThermalDashboard(QtWidgets.QMainWindow):
                 label=f"{device_id} / CH{channel}",
                 linewidth=1.6,
             )
+            fault_x = [
+                index for index, sample in enumerate(visible) if sample.abnormal
+            ]
+            if fault_x:
+                self.axes.scatter(
+                    fault_x,
+                    [visible[index].temp_c for index in fault_x],
+                    color="#b71c1c",
+                    marker="x",
+                    s=55,
+                    zorder=3,
+                )
 
         self.axes.set_title("Object temperature history")
         self.axes.set_xlabel("Recent samples")
