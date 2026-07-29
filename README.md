@@ -69,6 +69,7 @@ after the host bus and mux address have been checked.
 - [Bill of materials](hardware/BOM.md)
 - [KiCad source and design notes](hardware/README.md)
 - [Prototype photo checklist](hardware/photos/README.md)
+- [Bench verification procedure](docs/BENCH_VERIFICATION.md)
 
 > Prototype photo placeholder: add
 > `hardware/photos/breadboard-overview.jpg` after the real assembly has been
