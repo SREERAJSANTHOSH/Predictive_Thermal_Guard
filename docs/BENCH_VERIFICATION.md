@@ -8,6 +8,9 @@ straight into `NOTES.md` as you go, including anything that goes wrong.
 Don't ask ChatGPT to fill in `NOTES.md` for you. This file only exists to be
 useful if the numbers in it are real.
 
+Use the machine-readable [bench checklist](BENCH_CHECKLIST.json) to track
+session status without inventing measurements.
+
 ---
 
 ## Before you start

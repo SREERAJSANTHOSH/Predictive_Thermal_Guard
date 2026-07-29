@@ -1,0 +1,125 @@
+{
+  "title": "Bench Verification Checklist - Predictive Thermal Guard",
+  "purpose": "Track real hardware verification so NOTES.md can be filled with actual measurements instead of placeholders.",
+  "rules": [
+    "Only record measurements you actually took.",
+    "If a step fails, record what failed and what you tried, not just the eventual fix.",
+    "Do not ask ChatGPT to invent NOTES.md values.",
+    "Update status fields as you go: 'not_started', 'in_progress', 'done', 'blocked'."
+  ],
+  "equipment_needed": [
+    "ESP32 DevKit + USB cable",
+    "TCA9548A breakout",
+    "1-4 MLX90614 breakouts",
+    "Multimeter",
+    "Jumper wires, breadboard",
+    "Laptop with PlatformIO + serial monitor",
+    "Reference thermometer (phone IR thermometer or lab thermometer)",
+    "Low-voltage safe heat source (NOT mains equipment)"
+  ],
+  "sessions": [
+    {
+      "id": "session_1",
+      "name": "Host bus and mux",
+      "goal": "Confirm ESP32 can see the TCA9548A on I2C before any sensors are attached.",
+      "status": "not_started",
+      "steps": [
+        "Wire ESP32 to TCA9548A per hardware/WIRING.md (host side only)",
+        "Tie A0/A1/A2 to GND so mux address is 0x70",
+        "Power ESP32 over USB",
+        "Multimeter: measure 3V3 to GND, expect ~3.3V",
+        "Multimeter: measure SDA and SCL to GND with bus idle, expect ~3.3V (pulled high)",
+        "Flash a basic Arduino I2C scanner sketch",
+        "Confirm scanner reports a device at 0x70"
+      ],
+      "record_in_notes_md": [
+        "exact_board_names_and_revisions",
+        "measured_3v3_rail_voltage",
+        "address_0x70_found (true/false)",
+        "sda_scl_pullup_behavior",
+        "problems_encountered"
+      ],
+      "troubleshooting_if_not_found": [
+        "check solder joints on breakout",
+        "confirm 3.3V vs 5V logic level matches ESP32 board",
+        "confirm A0/A1/A2 are actually grounded"
+      ]
+    },
+    {
+      "id": "session_2",
+      "name": "First MLX90614",
+      "goal": "Confirm one real sensor gives sane, cross-checkable readings through the mux.",
+      "status": "not_started",
+      "depends_on": "session_1",
+      "steps": [
+        "Wire one MLX90614 to mux channel 0 per hardware/WIRING.md",
+        "Flash firmware/src/main.cpp, open serial monitor",
+        "Confirm boot log reports 'MLX90614 ready on mux channel 0'",
+        "Point sensor at a known surface and simultaneously check with reference thermometer",
+        "Run for 10 minutes, count any 'read failed' lines"
+      ],
+      "record_in_notes_md": [
+        "ambient_reading_vs_room_temp",
+        "object_reading_vs_reference_thermometer",
+        "difference_between_readings",
+        "target_distance_and_fov_estimate",
+        "read_failure_count_over_10_min"
+      ],
+      "notes": "MLX90614 accuracy is ~+/-0.5C in ideal conditions but depends heavily on emissivity and distance. A few degrees off vs. reference is normal - record it honestly."
+    },
+    {
+      "id": "session_3",
+      "name": "Multiple sensors and MQTT",
+      "goal": "Confirm mux correctly switches between sensors and MQTT delivery is reliable.",
+      "status": "not_started",
+      "depends_on": "session_2",
+      "steps": [
+        "Add 2nd (and 3rd/4th if available) MLX90614 on remaining mux channels",
+        "Start Mosquitto broker locally",
+        "In separate terminal: mosquitto_sub -v -t 'thermal-fault-guard/+/temperature'",
+        "Flash and run firmware, confirm all connected channels report 'ready' at boot",
+        "Watch serial monitor and mosquitto_sub output for at least 5 minutes",
+        "Test Wi-Fi reconnect: power-cycle router or move ESP32 out of range briefly",
+        "Test MQTT reconnect: stop and restart Mosquitto broker while ESP32 runs"
+      ],
+      "record_in_notes_md": [
+        "channels_connected",
+        "measured_publish_interval",
+        "messages_match_between_serial_and_mosquitto_sub (true/false)",
+        "queue_full_drops_observed",
+        "wifi_reconnect_result",
+        "mqtt_reconnect_result"
+      ]
+    },
+    {
+      "id": "fault_trial",
+      "name": "End-to-end fault detection",
+      "goal": "Confirm the rolling-average detector in backend/monitor.py flags a real temperature change.",
+      "status": "not_started",
+      "depends_on": "session_3",
+      "safety_note": "Use a low-voltage, controlled heat source only. Never point sensors at mains-powered equipment or exposed wiring.",
+      "steps": [
+        "Start monitor: thermal-monitor --broker localhost --csv temperature_log.csv",
+        "Let one channel sit at stable baseline for at least 2 minutes (needs 8+ samples)",
+        "Introduce heat source near that sensor",
+        "Watch for [FAULT] line in monitor output",
+        "Open dashboard (thermal-dashboard --csv temperature_log.csv) and confirm row turns red with a marked point on the plot"
+      ],
+      "record_in_notes_md": [
+        "baseline_duration_and_mean_temp",
+        "heat_source_used_and_distance",
+        "threshold_settings_used",
+        "temperature_at_which_it_flagged",
+        "time_from_heat_to_flag",
+        "false_alerts_before_heat_introduced"
+      ]
+    }
+  ],
+  "after_all_sessions": [
+    "Update README 'Current status' section to reflect what's actually verified",
+    "Add real photo: hardware/photos/breadboard-overview.jpg, replace placeholder note",
+    "Fix hardware/WIRING.md or KiCad drawing if reality differed from the draft",
+    "Commit separately with an honest message, e.g. 'bench: sessions 1-3 + fault trial completed, see NOTES.md'",
+    "If any step failed and stayed unresolved, leave it documented as an open problem in NOTES.md rather than omitting it"
+  ]
+}
